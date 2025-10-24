@@ -1,3 +1,4 @@
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +6,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -19,9 +23,25 @@ var summaries = new[]
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
 };
 
+
+
+app.MapGet("/api/bands",  () =>
+{
+    var sampleBands = new[]
+    {
+        new {Id = 1, Name = "Sublime", Genre = "Ska Punk", Stage = "B Stage"},
+        new {Id = 2, Name = "The Strokes", Genre = "Rock", Stage = "Main Stage"}
+    };
+
+    return Results.Ok(sampleBands);
+}).WithName("GetBands");
+
+
+
+
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -32,6 +52,7 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
 
 app.Run();
 
