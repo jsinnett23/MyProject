@@ -1,12 +1,20 @@
 
+using Microsoft.EntityFrameworkCore;
+using MyProject.Backend.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddDbContext<MusicFestivalContext>(options =>
+    options.UseSqlite("Data Source=musicfestival.db"));
 
 var app = builder.Build();
 
+app.MapGet("/api/bands", async
+(MusicFestivalContext db) => await
+db.Bands.ToListAsync());
 
 
 
@@ -24,17 +32,6 @@ var summaries = new[]
 };
 
 
-
-app.MapGet("/api/bands",  () =>
-{
-    var sampleBands = new[]
-    {
-        new {Id = 1, Name = "Sublime", Genre = "Ska Punk", Stage = "B Stage"},
-        new {Id = 2, Name = "The Strokes", Genre = "Rock", Stage = "Main Stage"}
-    };
-
-    return Results.Ok(sampleBands);
-}).WithName("GetBands");
 
 
 
