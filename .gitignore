@@ -1,0 +1,25 @@
+# Dotnet files
+/backend/bin/
+/backend/obj/
+
+#Node files
+/frontend/node_modules/
+
+#SQLite 3 files
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+backend/*.db
+backend/*.db-wal
+backend/*.db-shm
+
+#IDES
+.vscode/
+.DS_Store
+
+#Logs & env
+*.logs
+.env
+
+
