@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using MyProject.Backend.Data;
+using MyProject.Backend.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,9 +13,20 @@ builder.Services.AddDbContext<MusicFestivalContext>(options =>
 
 var app = builder.Build();
 
+
+//This function list the bands playing
 app.MapGet("/api/bands", async
 (MusicFestivalContext db) => await
 db.Bands.ToListAsync());
+
+//This function post a new band to the database
+app.MapPost("/api/bands", async (Band band,
+MusicFestivalContext db) =>
+{
+    db.Bands.Add(band);
+    await db.SaveChangesAsync(); return
+    Results.Created($"/api/bands/{band.Id}", band);
+});
 
 
 
@@ -26,29 +38,27 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// var summaries = new[]
+// {
+//     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+// };
 
 
+// app.MapGet("/weatherforecast", () =>
+// {
+//     var forecast = Enumerable.Range(1, 5).Select(index =>
+//         new WeatherForecast
+//         (
+//             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+//             Random.Shared.Next(-20, 55),
+//             summaries[Random.Shared.Next(summaries.Length)]
+//         ))
+//         .ToArray();
+//     return forecast;
+// })
+// .WithName("GetWeatherForecast");
 
 
-
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
 
 
 app.Run();
