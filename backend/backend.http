@@ -1,6 +1,37 @@
 @backend_HostAddress = http://localhost:5241
 
-GET {{backend_HostAddress}}/weatherforecast/
+### Get all bands
+GET {{backend_HostAddress}}/api/bands
 Accept: application/json
 
-###
+### Get band by id (replace {{id}} or set env variable)
+# GET {{backend_HostAddress}}/api/bands/{{id}}
+# Accept: application/json
+
+### Create a band
+POST {{backend_HostAddress}}/api/bands
+Content-Type: application/json
+
+{
+  "name": "The Rolling Codes",
+  "genre": "Rock",
+  "dateTime": "2025-11-09T20:00:00Z",
+  "stage": "Main"
+}
+
+### Create multiple (example) — duplicate/edit the body as needed
+# POST {{backend_HostAddress}}/api/bands
+# Content-Type: application/json
+#
+# [
+#   { "name": "Band A", "genre": "Indie", "dateTime": "2025-11-10T18:00:00Z", "stage": "Stage 1" },
+#   { "name": "Band B", "genre": "Electronic", "dateTime": "2025-11-10T20:00:00Z", "stage": "Stage 2" }
+# ]
+
+### Dev-only: run a read-only SQL query (only if you add the dev endpoint)
+# POST {{backend_HostAddress}}/api/dev/query
+# Content-Type: application/json
+#
+# {
+#   "query": "SELECT Id, Name, Genre FROM Bands LIMIT 100"
+# }

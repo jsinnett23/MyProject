@@ -28,6 +28,40 @@ MusicFestivalContext db) =>
     Results.Created($"/api/bands/{band.Id}", band);
 });
 
+// Get a single band by id
+app.MapGet("/api/bands/{id}", async (int id, MusicFestivalContext db) =>
+{
+    var band = await db.Bands.FindAsync(id);
+    return band is not null ? Results.Ok(band) : Results.NotFound();
+});
+
+// Update an existing band
+app.MapPut("/api/bands/{id}", async (int id, Band updatedBand, MusicFestivalContext db) =>
+{
+    var existing = await db.Bands.FindAsync(id);
+    if (existing is null) return Results.NotFound();
+
+    // Update allowed fields
+    existing.Name = updatedBand.Name;
+    existing.Genre = updatedBand.Genre;
+    existing.DateTime = updatedBand.DateTime;
+    existing.Stage = updatedBand.Stage;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(existing);
+});
+
+// Delete a band
+app.MapDelete("/api/bands/{id}", async (int id, MusicFestivalContext db) =>
+{
+    var existing = await db.Bands.FindAsync(id);
+    if (existing is null) return Results.NotFound();
+
+    db.Bands.Remove(existing);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
 
 
 // Configure the HTTP request pipeline.
