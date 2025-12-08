@@ -15,9 +15,6 @@ builder.Services.AddDbContext<MusicFestivalContext>(options =>
 
 var app = builder.Build();
 
-// Use global exception handling middleware
-app.UseMiddleware<MyProject.Backend.Middleware.ExceptionMiddleware>();
-
 
 // GET /api/bands with paging, filtering and sorting
 app.MapGet("/api/bands", async (
@@ -98,13 +95,36 @@ app.MapGet("/api/bands", async (
     return Results.Ok(result);
 });
 
-//This function post a new band to the database
-app.MapPost("/api/bands", async (Band band,
-MusicFestivalContext db) =>
+//This function post a new band to the database (inline validation)
+app.MapPost("/api/bands", async (MyProject.Backend.Dtos.BandCreateDto dto, MusicFestivalContext db) =>
 {
+    var errors = new Dictionary<string, string[]>();
+    if (string.IsNullOrWhiteSpace(dto.Name))
+        errors["name"] = new[] { "Name is required." };
+    else if (dto.Name.Length > 200)
+        errors["name"] = new[] { "Name can't be longer than 200 characters." };
+
+    if (!string.IsNullOrEmpty(dto.Genre) && dto.Genre.Length > 100)
+        errors["genre"] = new[] { "Genre can't be longer than 100 characters." };
+
+    if (!string.IsNullOrEmpty(dto.Stage) && dto.Stage.Length > 100)
+        errors["stage"] = new[] { "Stage can't be longer than 100 characters." };
+
+    if (errors.Any()) return Results.ValidationProblem(errors);
+
+    var band = new Band
+    {
+        Name = dto.Name,
+        Genre = dto.Genre,
+        DateTime = dto.DateTime,
+        Stage = dto.Stage
+    };
+
     db.Bands.Add(band);
-    await db.SaveChangesAsync(); return
-    Results.Created($"/api/bands/{band.Id}", band);
+    await db.SaveChangesAsync();
+
+    var read = new BandReadDto { Id = band.Id, Name = band.Name, Genre = band.Genre, DateTime = band.DateTime, Stage = band.Stage };
+    return Results.Created($"/api/bands/{band.Id}", read);
 });
 
 // Get a single band by id
@@ -114,20 +134,35 @@ app.MapGet("/api/bands/{id}", async (int id, MusicFestivalContext db) =>
     return band is not null ? Results.Ok(band) : Results.NotFound();
 });
 
-// Update an existing band
-app.MapPut("/api/bands/{id}", async (int id, Band updatedBand, MusicFestivalContext db) =>
+// Update an existing band (inline validation)
+app.MapPut("/api/bands/{id}", async (int id, MyProject.Backend.Dtos.BandUpdateDto dto, MusicFestivalContext db) =>
 {
+    var errors = new Dictionary<string, string[]>();
+    if (string.IsNullOrWhiteSpace(dto.Name))
+        errors["name"] = new[] { "Name is required." };
+    else if (dto.Name.Length > 200)
+        errors["name"] = new[] { "Name can't be longer than 200 characters." };
+
+    if (!string.IsNullOrEmpty(dto.Genre) && dto.Genre.Length > 100)
+        errors["genre"] = new[] { "Genre can't be longer than 100 characters." };
+
+    if (!string.IsNullOrEmpty(dto.Stage) && dto.Stage.Length > 100)
+        errors["stage"] = new[] { "Stage can't be longer than 100 characters." };
+
+    if (errors.Any()) return Results.ValidationProblem(errors);
+
     var existing = await db.Bands.FindAsync(id);
     if (existing is null) return Results.NotFound();
 
-    // Update allowed fields
-    existing.Name = updatedBand.Name;
-    existing.Genre = updatedBand.Genre;
-    existing.DateTime = updatedBand.DateTime;
-    existing.Stage = updatedBand.Stage;
+    existing.Name = dto.Name;
+    existing.Genre = dto.Genre;
+    existing.DateTime = dto.DateTime;
+    existing.Stage = dto.Stage;
 
     await db.SaveChangesAsync();
-    return Results.Ok(existing);
+
+    var read = new BandReadDto { Id = existing.Id, Name = existing.Name, Genre = existing.Genre, DateTime = existing.DateTime, Stage = existing.Stage };
+    return Results.Ok(read);
 });
 
 // Delete a band
@@ -148,6 +183,28 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+// Below is middleware for adding 500 error
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var ex = feature?.Error;
+
+        var pd = new Microsoft.AspNetCore.Mvc.ProblemDetails
+        {
+            Title = "An unexpected error occurred.",
+            Status = StatusCodes.Status500InternalServerError,
+            Detail = builder.Environment.IsDevelopment() ? ex?.ToString() : "Internal server error",
+            Instance = context.Request.Path
+        };
+
+        context.Response.StatusCode = pd.Status ?? 500;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(pd, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+    });
+});
 
 app.UseHttpsRedirection();
 
