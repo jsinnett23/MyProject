@@ -4,6 +4,8 @@ using MyProject.Backend.Data;
 using MyProject.Backend.Models;
 using MyProject.Backend.Dtos;
 using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -231,9 +233,55 @@ app.UseHttpsRedirection();
 
 
 
+// In Development, apply any pending migrations and seed sample data.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    try
+    {
+        var db = services.GetRequiredService<MusicFestivalContext>();
+
+        // Apply migrations (idempotent) so the DB schema matches the model.
+        db.Database.Migrate();
+
+        // Idempotent seed: will do nothing if data already exists.
+        SeedData.EnsureSeedData(db);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating or seeding the database.");
+        throw;
+    }
+}
+
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+// Simple, idempotent seed helper included inline so it's easy to review.
+public static class SeedData
+{
+    public static void EnsureSeedData(MusicFestivalContext context)
+    {
+        // Idempotency: if there are any bands, assume DB already seeded.
+        if (context.Bands.Any())
+        {
+            return;
+        }
+
+        var sampleBands = new[]
+        {
+            new Band { Name = "The Rolling Bytes", Genre = "Rock", Stage = "Main", DateTime = new DateTime(2026, 6, 12, 20, 0, 0) },
+            new Band { Name = "Synth Sunrise", Genre = "Electronic", Stage = "Electro", DateTime = new DateTime(2026, 6, 12, 22, 0, 0) },
+            new Band { Name = "Folk & Loops", Genre = "Folk", Stage = "Acoustic", DateTime = new DateTime(2026, 6, 13, 18, 30, 0) },
+        };
+
+        context.Bands.AddRange(sampleBands);
+        context.SaveChanges();
+    }
 }
