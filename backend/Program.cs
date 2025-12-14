@@ -12,6 +12,16 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+// Allow the React dev server to call this API during development.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalDev", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 builder.Services.AddDbContext<MusicFestivalContext>(options =>
     options.UseSqlite("Data Source=musicfestival.db"));
 
@@ -207,6 +217,9 @@ app.UseExceptionHandler(errorApp =>
         await context.Response.WriteAsJsonAsync(pd, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
     });
 });
+
+// Enable CORS for the configured dev origins
+app.UseCors("LocalDev");
 
 app.UseHttpsRedirection();
 
