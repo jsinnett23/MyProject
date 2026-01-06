@@ -18,6 +18,7 @@ namespace MyProject.Backend.Data
             : base(options) { }
 
         public DbSet<Band> Bands { get; set; } = null!;
+        public DbSet<User> Users { get; set; } // For auth
 
     }
 

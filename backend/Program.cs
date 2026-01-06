@@ -1,4 +1,3 @@
-
 using Microsoft.EntityFrameworkCore;
 using MyProject.Backend.Data;
 using MyProject.Backend.Models;
@@ -6,6 +5,12 @@ using MyProject.Backend.Dtos;
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using MyProject.Backend.Services;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 // Allow the React dev server to call this API during development.
+// Will have to update this when I add auth
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LocalDev", policy =>
@@ -25,6 +31,29 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<MusicFestivalContext>(options =>
     options.UseSqlite("Data Source=musicfestival.db"));
 
+builder.Services.AddSingleton<TokenService>();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]);
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(1)
+    };
+});
+
+builder.Services.AddAuthorization();
 var app = builder.Build();
 
 
@@ -175,7 +204,7 @@ app.MapPut("/api/bands/{id}", async (int id, MyProject.Backend.Dtos.BandUpdateDt
 
     var read = new BandReadDto { Id = existing.Id, Name = existing.Name, Genre = existing.Genre, DateTime = existing.DateTime, Stage = existing.Stage };
     return Results.Ok(read);
-});
+}).RequireAuthorization();;
 
 // Delete a band
 app.MapDelete("/api/bands/{id}", async (int id, MusicFestivalContext db) =>
@@ -186,6 +215,20 @@ app.MapDelete("/api/bands/{id}", async (int id, MusicFestivalContext db) =>
     db.Bands.Remove(existing);
     await db.SaveChangesAsync();
     return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapPost("/api/auth/login", async (UserLoginDto dto, MusicFestivalContext db, MyProject.Backend.Services.TokenService tokenService) =>
+{
+    var user = await db.Users.SingleOrDefaultAsync(u => u.Username == dto.Username);
+    if (user is null) return Results.Unauthorized();
+
+    var hasher = new PasswordHasher<User>();
+    var verify = hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+    if (verify == PasswordVerificationResult.Failed) return Results.Unauthorized();
+
+    var token = tokenService.CreateToken(user.Username, new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role ?? "") }, int.Parse(builder.Configuration["Jwt:ExpireMinutes"] ?? "60"));
+
+    return Results.Ok(new AuthResponseDto(token, DateTime.UtcNow.AddMinutes(int.Parse(builder.Configuration["Jwt:ExpireMinutes"] ?? "60"))));
 });
 
 
@@ -222,6 +265,8 @@ app.UseExceptionHandler(errorApp =>
 app.UseCors("LocalDev");
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization(); //Add auth
 
 // var summaries = new[]
 // {
@@ -260,6 +305,7 @@ if (app.Environment.IsDevelopment())
 
         // Idempotent seed: will do nothing if data already exists.
         SeedData.EnsureSeedData(db);
+
     }
     catch (Exception ex)
     {
@@ -282,10 +328,7 @@ public static class SeedData
     public static void EnsureSeedData(MusicFestivalContext context)
     {
         // Idempotency: if there are any bands, assume DB already seeded.
-        if (context.Bands.Any())
-        {
-            return;
-        }
+        
 
         var sampleBands = new[]
         {
@@ -294,7 +337,42 @@ public static class SeedData
             new Band { Name = "Folk & Loops", Genre = "Folk", Stage = "Acoustic", DateTime = new DateTime(2026, 6, 13, 18, 30, 0) },
         };
 
-        context.Bands.AddRange(sampleBands);
-        context.SaveChanges();
+        foreach (var s in sampleBands)
+        {
+            var exists = context.Bands.Any(b =>
+            b.Name == s.Name &&
+            b.DateTime.HasValue &&
+            s.DateTime.HasValue &&
+            b.DateTime.Value == s.DateTime.Value);
+            
+            if (!exists)
+            {
+                context.Bands.Add(s);
+            }
+        }
+
+        //Seeding for DEV User
+
+        if(!context.Users.Any(u => u.Username == "josh"))
+        {
+            var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<MyProject.Backend.Models.User>();
+            var devUser = new MyProject.Backend.Models.User
+            {
+                Username = "josh",
+                Role = "Dev"
+            };
+            devUser.PasswordHash = hasher.HashPassword(devUser, "password123!");
+            context.Users.Add(devUser);
+        }
+
+        if (context.ChangeTracker.HasChanges())
+        {
+            context.SaveChanges();
+        }
+
+        
     }
+    
+    
+
 }
