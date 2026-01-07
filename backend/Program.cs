@@ -17,6 +17,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+// Swagger / OpenAPI: add documentation config (XML comments will be picked up if generated)
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Music Festival API", Version = "v1" });
+    var xmlFile = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + ".xml";
+    var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (System.IO.File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
+});
 // Allow the React dev server to call this API during development.
 // Will have to update this when I add auth
 builder.Services.AddCors(options =>
@@ -39,7 +47,10 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]);
+    var keyString = builder.Configuration["Jwt:Key"];
+    if (string.IsNullOrWhiteSpace(keyString))
+        throw new InvalidOperationException("Configuration value 'Jwt:Key' is missing or empty.");
+    var key = Encoding.UTF8.GetBytes(keyString);
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
@@ -136,6 +147,10 @@ app.MapGet("/api/bands", async (
     return Results.Ok(result);
 });
 
+//Add Auth BEFORE ENDPOINTS
+app.UseAuthentication();
+app.UseAuthorization(); 
+
 //This function post a new band to the database (inline validation)
 app.MapPost("/api/bands", async (MyProject.Backend.Dtos.BandCreateDto dto, MusicFestivalContext db) =>
 {
@@ -166,7 +181,7 @@ app.MapPost("/api/bands", async (MyProject.Backend.Dtos.BandCreateDto dto, Music
 
     var read = new BandReadDto { Id = band.Id, Name = band.Name, Genre = band.Genre, DateTime = band.DateTime, Stage = band.Stage };
     return Results.Created($"/api/bands/{band.Id}", read);
-});
+}).RequireAuthorization();
 
 // Get a single band by id
 app.MapGet("/api/bands/{id}", async (int id, MusicFestivalContext db) =>
@@ -265,8 +280,6 @@ app.UseExceptionHandler(errorApp =>
 app.UseCors("LocalDev");
 
 app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization(); //Add auth
 
 // var summaries = new[]
 // {
