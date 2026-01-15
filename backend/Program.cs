@@ -11,22 +11,44 @@ using System.Text;
 using MyProject.Backend.Services;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Components.Web;
+using System.Security.Cryptography.Xml;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-// Swagger / OpenAPI: add documentation config (XML comments will be picked up if generated)
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Music Festival API", Version = "v1" });
-    var xmlFile = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + ".xml";
-    var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (System.IO.File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
-});
 // Allow the React dev server to call this API during development.
 // Will have to update this when I add auth
+builder.Services.AddEndpointsApiExplorer(); //Not sure what this does
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Music Festival API", Version = "v1" });
+
+    // include XML comments (enable GenerateDocumentationFile in csproj)
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
+
+    // JWT Bearer in Swagger UI
+    c.AddSecurityDefinition("bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter 'Bearer <token>'"
+    });
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme { Reference = new Microsoft.OpenApi.Models.OpenApiReference { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "bearer"} },
+            new string[] {}
+        }
+    });
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LocalDev", policy =>
@@ -251,7 +273,14 @@ app.MapPost("/api/auth/login", async (UserLoginDto dto, MusicFestivalContext db,
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    //enable swagger JSON + UI in dev
+    app.UseSwagger();
+    app.UseSwaggerUI( c => 
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Music Festival API v1");
+        c.RoutePrefix = "swagger";
+    }
+    );
 }
 
 // Below is middleware for adding 500 error
