@@ -2,8 +2,8 @@ Completed
 - Test seeds & migrations
 - Enable CORS for frontend dev
 - Add basic JWT auth (dev user + protected endpoints)
+- Enhanced Swagger /OpenAPI
 Next (ordered)
-- Enhance Swagger / OpenAPI
 - Add backend/README.md (run/test instructions + curl examples)
 - Add Dockerfile + docker-compose (persist SQLite via volume)
 - Add simple integration tests (login + protected endpoints)

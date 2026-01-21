@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Components.Web;
 using System.Security.Cryptography.Xml;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -253,6 +254,27 @@ app.MapDelete("/api/bands/{id}", async (int id, MusicFestivalContext db) =>
     await db.SaveChangesAsync();
     return Results.NoContent();
 }).RequireAuthorization();
+
+
+//Register a user
+app.MapPost("api/auth/register", async (UserLoginDto dto, MusicFestivalContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
+        return Results.BadRequest(new {error = "username and password are required"});
+    
+    if (await db.Users.AnyAsync(u => u.Username == dto.Username))
+        return Results.Conflict(new { error = "username taken"});
+
+    var user = new MyProject.Backend.Models.User {Username = dto.Username, Role = "user"};
+    var hasher = new PasswordHasher<MyProject.Backend.Models.User>();
+    user.PasswordHash = hasher.HashPassword(user,dto.Password);
+
+    db.Users.Add(user);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/users{user.Id}", new {user.Id, user.Username});
+
+});
 
 app.MapPost("/api/auth/login", async (UserLoginDto dto, MusicFestivalContext db, MyProject.Backend.Services.TokenService tokenService) =>
 {
