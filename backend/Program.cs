@@ -19,10 +19,7 @@ using Microsoft.AspNetCore.Mvc;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-// Allow the React dev server to call this API during development.
-// Will have to update this when I add auth
-builder.Services.AddEndpointsApiExplorer(); //Not sure what this does
+builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Music Festival API", Version = "v1" });

@@ -3,8 +3,8 @@ Completed
 - Enable CORS for frontend dev
 - Add basic JWT auth (dev user + protected endpoints)
 - Enhanced Swagger /OpenAPI
+- Added a read me file!
 Next (ordered)
-- Add backend/README.md (run/test instructions + curl examples)
 - Add Dockerfile + docker-compose (persist SQLite via volume)
 - Add simple integration tests (login + protected endpoints)
 - CI: build + test + publish image (optional)
