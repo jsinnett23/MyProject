@@ -1,7 +1,0 @@
-/Users/joshuasinnett/Desktop/MyProject/backend/MyProject.Api.IntegrationTest/obj/Debug/net9.0/MyProject.Api.IntegrationTest.csproj.AssemblyReference.cache
-/Users/joshuasinnett/Desktop/MyProject/backend/MyProject.Api.IntegrationTest/obj/Debug/net9.0/MvcTestingAppManifest.json
-/Users/joshuasinnett/Desktop/MyProject/backend/MyProject.Api.IntegrationTest/obj/Debug/net9.0/MyProject.Api.IntegrationTest.GeneratedMSBuildEditorConfig.editorconfig
-/Users/joshuasinnett/Desktop/MyProject/backend/MyProject.Api.IntegrationTest/obj/Debug/net9.0/MyProject.Api.IntegrationTest.AssemblyInfoInputs.cache
-/Users/joshuasinnett/Desktop/MyProject/backend/MyProject.Api.IntegrationTest/obj/Debug/net9.0/MyProject.Api.IntegrationTest.AssemblyInfo.cs
-/Users/joshuasinnett/Desktop/MyProject/backend/MyProject.Api.IntegrationTest/obj/Debug/net9.0/MyProject.Api.IntegrationTest.csproj.CoreCompileInputs.cache
-/Users/joshuasinnett/Desktop/MyProject/backend/MyProject.Api.IntegrationTest/obj/Debug/net9.0/MyProject.Api.IntegrationTest.sourcelink.json
