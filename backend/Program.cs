@@ -290,7 +290,7 @@ app.MapPost("/api/auth/login", async (UserLoginDto dto, MusicFestivalContext db,
 
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     //enable swagger JSON + UI in dev
     app.UseSwagger();
