@@ -57,7 +57,7 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddDbContext<MusicFestivalContext>(options =>
-    options.UseSqlite("Data Source=musicfestival.db"));
+    options.UseSqlite("Data Source=Data/musicfestival.db"));
 
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddAuthentication(options =>

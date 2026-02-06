@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ./backend
+    ports:
+       - "5241:8080"
+    volumes:
+      - ./backend/Data:/app/Data  # persist SQLite
+    environment:
+      - DOTNET_ENVIRONMENT=Development
