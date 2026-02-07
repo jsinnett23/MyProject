@@ -56,8 +56,11 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+var dbPath = Path.Combine(AppContext.BaseDirectory, "musicfestival.db");
+
 builder.Services.AddDbContext<MusicFestivalContext>(options =>
-    options.UseSqlite("Data Source=Data/musicfestival.db"));
+    options.UseSqlite($"Data Source={dbPath}"));
+
 
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddAuthentication(options =>
@@ -67,25 +70,70 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    // Read the JWT signing key from configuration 
     var keyString = builder.Configuration["Jwt:Key"];
+
+    // Throwing here causes the app to fail fast instead of running insecurely
     if (string.IsNullOrWhiteSpace(keyString))
-        throw new InvalidOperationException("Configuration value 'Jwt:Key' is missing or empty.");
+        throw new InvalidOperationException(
+            "Configuration value 'Jwt:Key' is missing or empty."
+        );
+
+    // Convert the secret key string into a byte array
     var key = Encoding.UTF8.GetBytes(keyString);
+
+    // Configure how incoming JWT tokens are validated
     options.TokenValidationParameters = new TokenValidationParameters
     {
+        // Ensure the token was signed with a trusted key
         ValidateIssuerSigningKey = true,
+
+        // The key that the JWT must be signed with
         IssuerSigningKey = new SymmetricSecurityKey(key),
+
+        // Ensure the token was issued by a trusted issuer
         ValidateIssuer = true,
+
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
+
         ValidateAudience = true,
+
+        // The expected audience value (e.g. "MyApi")
+        // Must match the "aud" claim inside the JWT
         ValidAudience = builder.Configuration["Jwt:Audience"],
+
+        // Ensure the token has not expired
         ValidateLifetime = true,
+
+        // Allow a small time difference between servers (clock drift)
+        // Prevents tokens from failing due to tiny clock mismatches
         ClockSkew = TimeSpan.FromMinutes(1)
     };
 });
 
 builder.Services.AddAuthorization();
 var app = builder.Build();
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var ex = feature?.Error;
+
+        var pd = new Microsoft.AspNetCore.Mvc.ProblemDetails
+        {
+            Title = "An unexpected error occurred.",
+            Status = StatusCodes.Status500InternalServerError,
+            Detail = builder.Environment.IsDevelopment() ? ex?.ToString() : "Internal server error",
+            Instance = context.Request.Path
+        };
+
+        context.Response.StatusCode = pd.Status ?? 500;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(pd, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+    });
+});
 
 
 // GET /api/bands with paging, filtering and sorting
@@ -302,27 +350,6 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     );
 }
 
-// Below is middleware for adding 500 error
-app.UseExceptionHandler(errorApp =>
-{
-    errorApp.Run(async context =>
-    {
-        var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
-        var ex = feature?.Error;
-
-        var pd = new Microsoft.AspNetCore.Mvc.ProblemDetails
-        {
-            Title = "An unexpected error occurred.",
-            Status = StatusCodes.Status500InternalServerError,
-            Detail = builder.Environment.IsDevelopment() ? ex?.ToString() : "Internal server error",
-            Instance = context.Request.Path
-        };
-
-        context.Response.StatusCode = pd.Status ?? 500;
-        context.Response.ContentType = "application/problem+json";
-        await context.Response.WriteAsJsonAsync(pd, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
-    });
-});
 
 // Enable CORS for the configured dev origins
 app.UseCors("LocalDev");
